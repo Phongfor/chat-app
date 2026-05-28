@@ -1,3 +1,9 @@
 spring:
   application:
     name: chat-app-backend
+
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: chatapp
