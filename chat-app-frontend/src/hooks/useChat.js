@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { roomApi } from "../services/api";
-import { connectWebSocket, sendMessage, disconnectWebSocket } from "../services/websocket";
+import {
+  connectWebSocket,
+  disconnectWebSocket,
+  sendActivity,
+  sendMessage,
+} from "../services/websocket";
 
 export const useChat = (roomId, username) => {
   const [messages, setMessages] = useState([]);
@@ -8,6 +13,8 @@ export const useChat = (roomId, username) => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState([username]);
+  const [typingUsers, setTypingUsers] = useState([]);
 
   const loadMessages = useCallback(async (pageNum = 0) => {
     try {
@@ -37,6 +44,22 @@ export const useChat = (roomId, username) => {
     sendMessage({ roomId, sender: username, content });
   }, [roomId, username]);
 
+  const sendUserActivity = useCallback((type) => {
+    sendActivity({ roomId, username, type });
+  }, [roomId, username]);
+
+  const sendTyping = useCallback(() => {
+    sendUserActivity("TYPING");
+  }, [sendUserActivity]);
+
+  const sendStopTyping = useCallback(() => {
+    sendUserActivity("STOP_TYPING");
+  }, [sendUserActivity]);
+
+  const sendLeave = useCallback(() => {
+    sendUserActivity("LEAVE");
+  }, [sendUserActivity]);
+
   useEffect(() => {
     if (!roomId || !username) return;
 
@@ -44,13 +67,58 @@ export const useChat = (roomId, username) => {
 
     connectWebSocket({
       roomId,
-      onConnect: () => setConnected(true),
+      onConnect: () => {
+        setConnected(true);
+        sendUserActivity("JOIN");
+      },
       onDisconnect: () => setConnected(false),
       onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+      onActivity: (activity) => {
+        const activityUsername = activity.username;
+
+        if (Array.isArray(activity.onlineUsers)) {
+          setOnlineUsers(activity.onlineUsers);
+        }
+
+        if (!activityUsername || activityUsername === username) return;
+
+        if (activity.type === "TYPING") {
+          setTypingUsers((prev) => (
+            prev.includes(activityUsername) ? prev : [...prev, activityUsername]
+          ));
+          return;
+        }
+
+        if (activity.type === "STOP_TYPING" || activity.type === "LEAVE") {
+          setTypingUsers((prev) => prev.filter((name) => name !== activityUsername));
+        }
+      },
     });
 
-    return () => disconnectWebSocket();
-  }, [roomId, username, loadMessages]);
+    const handleBeforeUnload = () => {
+      sendUserActivity("LEAVE");
+    };
 
-  return { messages, connected, loading, hasMore, send, loadMore };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      sendUserActivity("LEAVE");
+      disconnectWebSocket();
+    };
+  }, [roomId, username, loadMessages, sendUserActivity]);
+
+  return {
+    messages,
+    connected,
+    loading,
+    hasMore,
+    onlineUsers,
+    typingUsers,
+    send,
+    sendTyping,
+    sendStopTyping,
+    sendLeave,
+    loadMore,
+  };
 };

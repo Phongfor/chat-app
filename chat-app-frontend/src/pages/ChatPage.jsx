@@ -24,7 +24,19 @@ export default function ChatPage() {
 
 // Tách thành component riêng để useChat chỉ chạy khi đã có roomId
 function ChatPageContent({ roomId, username }) {
-  const { messages, connected, loading, hasMore, send, loadMore } = useChat(roomId, username);
+  const {
+    messages,
+    connected,
+    loading,
+    hasMore,
+    onlineUsers,
+    typingUsers,
+    send,
+    sendTyping,
+    sendStopTyping,
+    sendLeave,
+    loadMore,
+  } = useChat(roomId, username);
   const bottomRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -38,7 +50,7 @@ function ChatPageContent({ roomId, username }) {
 
   return (
     <div className="flex h-screen bg-[#0f0f0f] overflow-hidden">
-      <Sidebar />
+      <Sidebar onlineUsers={onlineUsers} onLeave={sendLeave} />
       <div className="flex flex-col flex-1 overflow-hidden">
 
         {/* Header */}
@@ -87,7 +99,14 @@ function ChatPageContent({ roomId, username }) {
           <div ref={bottomRef} />
         </div>
 
-        <ChatInput onSend={send} connected={connected} />
+        <TypingIndicator users={typingUsers} />
+
+        <ChatInput
+          onSend={send}
+          onTyping={sendTyping}
+          onStopTyping={sendStopTyping}
+          connected={connected}
+        />
       </div>
 
       <style>{`
@@ -96,6 +115,23 @@ function ChatPageContent({ roomId, username }) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+    </div>
+  );
+}
+
+function TypingIndicator({ users }) {
+  const visibleUsers = users.slice(0, 3);
+  const label = visibleUsers.length === 1
+    ? `${visibleUsers[0]} is typing...`
+    : `${visibleUsers.join(", ")} are typing...`;
+
+  return (
+    <div className="h-6 px-6 bg-[#141414] border-t border-[#222]">
+      {visibleUsers.length > 0 && (
+        <p className="text-[11px] text-neutral-500 font-mono leading-6 truncate">
+          {label}
+        </p>
+      )}
     </div>
   );
 }
