@@ -16,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/v1/rooms")
 @RequiredArgsConstructor
 public class RoomController {
-    private RoomRepository roomRepository;
+    private final RoomRepository roomRepository;
 
     @PostMapping
     public ResponseEntity<RoomResponse> createRoom(@RequestBody String roomId) {
