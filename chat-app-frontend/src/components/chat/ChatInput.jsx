@@ -1,14 +1,59 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionBadge } from "../ui";
 
-export default function ChatInput({ onSend, connected }) {
+const STOP_TYPING_DELAY = 1200;
+
+export default function ChatInput({ onSend, onTyping, onStopTyping, connected }) {
   const [text, setText] = useState("");
+  const isTypingRef = useRef(false);
+  const stopTypingTimerRef = useRef(null);
+
+  const clearStopTypingTimer = useCallback(() => {
+    if (stopTypingTimerRef.current) {
+      clearTimeout(stopTypingTimerRef.current);
+      stopTypingTimerRef.current = null;
+    }
+  }, []);
+
+  const emitStopTyping = useCallback(() => {
+    clearStopTypingTimer();
+
+    if (isTypingRef.current) {
+      onStopTyping?.();
+      isTypingRef.current = false;
+    }
+  }, [clearStopTypingTimer, onStopTyping]);
+
+  const scheduleStopTyping = useCallback(() => {
+    clearStopTypingTimer();
+    stopTypingTimerRef.current = setTimeout(emitStopTyping, STOP_TYPING_DELAY);
+  }, [clearStopTypingTimer, emitStopTyping]);
+
+  const handleTextChange = (event) => {
+    const nextText = event.target.value;
+    setText(nextText);
+
+    if (!connected) return;
+
+    if (nextText.trim()) {
+      if (!isTypingRef.current) {
+        onTyping?.();
+        isTypingRef.current = true;
+      }
+      scheduleStopTyping();
+    } else {
+      emitStopTyping();
+    }
+  };
 
   const handleSend = () => {
     if (!text.trim() || !connected) return;
     onSend(text.trim());
     setText("");
+    emitStopTyping();
   };
+
+  useEffect(() => () => emitStopTyping(), [emitStopTyping]);
 
   return (
     <div className="px-5 pt-3 pb-5 border-t border-[#222] bg-[#141414]">
@@ -17,8 +62,8 @@ export default function ChatInput({ onSend, connected }) {
 
         <input
           value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+          onChange={handleTextChange}
+          onKeyDown={(event) => event.key === "Enter" && !event.shiftKey && handleSend()}
           placeholder="Type a message..."
           disabled={!connected}
           className="flex-1 bg-transparent outline-none text-white text-sm placeholder:text-neutral-700 disabled:opacity-50"
