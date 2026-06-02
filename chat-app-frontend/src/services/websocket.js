@@ -29,11 +29,11 @@ export const connectWebSocket = ({ roomId, onMessage, onActivity, onConnect, onD
   stompClient.activate();
 };
 
-export const sendMessage = ({ roomId, sender, content }) => {
+export const sendMessage = ({ roomId, sender, content, replyToId, replyToContent, replyToSender }) => {
   if (!stompClient?.connected) return;
   stompClient.publish({
     destination: `/app/sendMessage/${roomId}`,
-    body: JSON.stringify({ roomId, sender, content }),
+    body: JSON.stringify({ roomId, sender, content, replyToId, replyToContent, replyToSender }),
   });
 };
 

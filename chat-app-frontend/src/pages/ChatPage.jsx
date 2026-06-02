@@ -31,7 +31,11 @@ function ChatPageContent({ roomId, username }) {
     hasMore,
     onlineUsers,
     typingUsers,
+    replyTo,
     send,
+    startReply,
+    cancelReply,
+    toggleReaction,
     sendTyping,
     sendStopTyping,
     sendLeave,
@@ -92,7 +96,12 @@ function ChatPageContent({ roomId, username }) {
                 </span>
               </div>
               {messages.map((msg, idx) => (
-                <MessageBubble key={idx} message={msg} />
+                <MessageBubble
+                  key={msg.id || idx}
+                  message={msg}
+                  onReply={startReply}
+                  onReact={toggleReaction}
+                />
               ))}
             </>
           )}
@@ -103,6 +112,8 @@ function ChatPageContent({ roomId, username }) {
 
         <ChatInput
           onSend={send}
+          replyTo={replyTo}
+          onCancelReply={cancelReply}
           onTyping={sendTyping}
           onStopTyping={sendStopTyping}
           connected={connected}

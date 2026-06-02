@@ -15,6 +15,21 @@ export const useChat = (roomId, username) => {
   const [hasMore, setHasMore] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState([username]);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [replyTo, setReplyTo] = useState(null);
+
+  const syncMessages = useCallback(async () => {
+    if (!roomId) return;
+
+    try {
+      const size = Math.max(messages.length, 20);
+      const res = await roomApi.getMessages(roomId, 0, size);
+      const fetched = res.data;
+      setMessages(fetched);
+      if (fetched.length < size) setHasMore(false);
+    } catch (err) {
+      console.error("Failed to sync messages:", err);
+    }
+  }, [messages.length, roomId]);
 
   const loadMessages = useCallback(async (pageNum = 0) => {
     try {
@@ -41,8 +56,63 @@ export const useChat = (roomId, username) => {
   }, [hasMore, loading, page, loadMessages]);
 
   const send = useCallback((content) => {
-    sendMessage({ roomId, sender: username, content });
-  }, [roomId, username]);
+    sendMessage({
+      roomId,
+      sender: username,
+      content,
+      replyToId: replyTo?.id,
+      replyToContent: replyTo?.content,
+      replyToSender: replyTo?.sender,
+    });
+    setReplyTo(null);
+  }, [roomId, username, replyTo]);
+
+  const startReply = useCallback((message) => {
+    setReplyTo({
+      id: message.id,
+      content: message.content,
+      sender: message.sender,
+    });
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
+
+  const toggleReaction = useCallback(async (message, emoji) => {
+    if (!message?.id) return;
+
+    const previousMessages = messages;
+    setMessages((prev) => prev.map((item) => {
+      if (item.id !== message.id) return item;
+
+      const reactions = { ...(item.reactions || {}) };
+      const users = [...(reactions[emoji] || [])];
+      const existingUserIndex = users.indexOf(username);
+
+      if (existingUserIndex >= 0) {
+        users.splice(existingUserIndex, 1);
+      } else {
+        users.push(username);
+      }
+
+      if (users.length) {
+        reactions[emoji] = users;
+      } else {
+        delete reactions[emoji];
+      }
+
+      return { ...item, reactions };
+    }));
+
+    try {
+      await roomApi.toggleReaction(roomId, message.id, emoji, username);
+      await syncMessages();
+    } catch (err) {
+      console.error("Failed to toggle reaction:", err);
+      setMessages(previousMessages);
+    }
+  }, [messages, roomId, syncMessages, username]);
 
   const sendUserActivity = useCallback((type) => {
     sendActivity({ roomId, username, type });
@@ -108,6 +178,13 @@ export const useChat = (roomId, username) => {
     };
   }, [roomId, username, loadMessages, sendUserActivity]);
 
+  useEffect(() => {
+    if (!roomId || !username) return undefined;
+
+    const syncTimer = setInterval(syncMessages, 3000);
+    return () => clearInterval(syncTimer);
+  }, [roomId, syncMessages, username]);
+
   return {
     messages,
     connected,
@@ -115,7 +192,11 @@ export const useChat = (roomId, username) => {
     hasMore,
     onlineUsers,
     typingUsers,
+    replyTo,
     send,
+    startReply,
+    cancelReply,
+    toggleReaction,
     sendTyping,
     sendStopTyping,
     sendLeave,

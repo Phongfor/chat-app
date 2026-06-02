@@ -3,7 +3,11 @@ import { ConnectionBadge } from "../ui";
 
 const STOP_TYPING_DELAY = 1200;
 
-export default function ChatInput({ onSend, onTyping, onStopTyping, connected }) {
+const trimReplyPreview = (content = "") => (
+  content.length > 120 ? `${content.slice(0, 120)}...` : content
+);
+
+export default function ChatInput({ onSend, onTyping, onStopTyping, connected, replyTo, onCancelReply }) {
   const [text, setText] = useState("");
   const isTypingRef = useRef(false);
   const stopTypingTimerRef = useRef(null);
@@ -57,6 +61,22 @@ export default function ChatInput({ onSend, onTyping, onStopTyping, connected })
 
   return (
     <div className="px-5 pt-3 pb-5 border-t border-[#222] bg-[#141414]">
+      {replyTo && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-[#2a2a2a] bg-[#1e1e1e] px-4 py-3">
+          <div className="min-w-0 border-l-2 border-blue-500 pl-3">
+            <p className="text-xs font-semibold text-blue-300">Replying to {replyTo.sender}</p>
+            <p className="mt-1 truncate text-xs text-neutral-400">{trimReplyPreview(replyTo.content)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            className="shrink-0 rounded-full border border-[#333] px-2 py-0.5 text-xs text-neutral-500 hover:text-neutral-200"
+            title="Cancel reply"
+          >
+            x
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2.5 bg-[#1e1e1e] border border-[#2a2a2a] rounded-2xl px-4 py-2.5 focus-within:border-blue-600/50 transition-colors">
         <button className="text-neutral-600 hover:text-neutral-400 transition-colors text-lg">+</button>
 

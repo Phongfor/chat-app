@@ -1,5 +1,6 @@
 package com.substring.chat.chat_app_backend.controller;
 
+import com.substring.chat.chat_app_backend.dto.request.ReactionRequest;
 import com.substring.chat.chat_app_backend.dto.response.RoomResponse;
 import com.substring.chat.chat_app_backend.entity.Message;
 import com.substring.chat.chat_app_backend.entity.Room;
@@ -10,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/rooms")
@@ -56,6 +59,32 @@ public class RoomController {
                     return ResponseEntity.ok(messages.subList(start, end));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{roomId}/messages/{messageId}/reactions")
+    public ResponseEntity<?> addReaction(@PathVariable String roomId,
+                                         @PathVariable String messageId,
+                                         @RequestBody ReactionRequest reactionRequest) {
+
+        Room room = roomRepository.findByRoomId(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+
+        room.getMessages().stream()
+                .filter(m-> messageId.equals(m.getId()))
+                .findFirst()
+                .ifPresent(message -> {
+                    Map<String, List<String>> reactions = message.getReactions();
+                    List<String> users = reactions.computeIfAbsent(reactionRequest.getEmoji(), k -> new ArrayList<>());
+
+                    if(users.contains(reactionRequest.getUsername())){
+                        users.remove(reactionRequest.getUsername());
+                        if(users.isEmpty()) reactions.remove(reactionRequest.getEmoji());
+                    }else{
+                        users.add(reactionRequest.getUsername());
+                    }
+                });
+        roomRepository.save(room);
+        return ResponseEntity.ok().build();
     }
 
 }

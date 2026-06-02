@@ -38,6 +38,12 @@ public class ChatController {
         message.setContent(request.getContent());
         message.setTimeStamp(LocalDateTime.now());
 
+        if (request.getReplyToId() != null) {
+            message.setReplyToId(request.getReplyToId());
+            message.setReplyToContent(request.getReplyToContent());
+            message.setReplyToSender(request.getReplyToSender());
+        }
+
         room.getMessages().add(message);
         roomRepository.save(room);
 

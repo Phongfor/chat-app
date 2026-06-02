@@ -15,4 +15,11 @@ export const roomApi = {
 
   getMessages: (roomId, page = 0, size = 20) =>
     api.get(`/rooms/${roomId}/messages`, { params: { page, size } }),
+
+  toggleReaction: (roomId, messageId, emoji, username) =>
+    api.post(`/rooms/${roomId}/messages/${messageId}/reactions`, {
+      messageId,
+      emoji,
+      username,
+    }),
 };
