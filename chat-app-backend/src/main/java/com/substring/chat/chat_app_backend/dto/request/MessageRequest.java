@@ -15,5 +15,7 @@ public class MessageRequest {
     private String sender;
     private String roomId;
 
-
+    private String replyToId;
+    private String replyToContent;
+    private String replyToSender;
 }
