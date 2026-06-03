@@ -3,7 +3,7 @@ spring:
     name: chat-app-backend
   data:
     mongodb:
-      uri: ${MONGO_URL}
+      uri: ${MONGO_PUBLIC_URL}
 
 server:
   port: ${PORT:8080}
