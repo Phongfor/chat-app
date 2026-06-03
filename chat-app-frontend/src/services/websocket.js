@@ -5,7 +5,7 @@ let stompClient = null;
 
 export const connectWebSocket = ({ roomId, onMessage, onActivity, onConnect, onDisconnect }) => {
   stompClient = new Client({
-    webSocketFactory: () => new SockJS("http://localhost:8080/chat"),
+    webSocketFactory: () => new SockJS(`${import.meta.env.VITE_WS_URL}/chat`),
 
     onConnect: () => {
       stompClient.subscribe(`/topic/room/${roomId}`, (frame) => {
