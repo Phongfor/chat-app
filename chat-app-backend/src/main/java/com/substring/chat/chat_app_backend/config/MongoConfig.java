@@ -22,13 +22,19 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
     @Override
     protected String getDatabaseName() {
         String uri = resolveUri();
-        // Extract the database name from the URI (last path segment, before any query string)
         try {
-            String path = uri.replaceFirst("mongodb(?:\\+srv)?://[^/]+/", "");
-            String dbName = path.split("[?&]")[0].trim();
-            return dbName.isEmpty() ? "test" : dbName;
+            // Normalise the scheme so java.net.URI can parse it (it doesn't understand mongodb+srv)
+            String parseableUri = uri.replaceFirst("^mongodb(\\+srv)?://", "mongodb://");
+            java.net.URI parsed = new java.net.URI(parseableUri);
+            String path = parsed.getPath(); // e.g. "/mydb", "/", or null when no path is present
+            if (path == null || path.isEmpty() || path.equals("/")) {
+                return "admin";
+            }
+            // Strip the leading slash and take only the first path segment
+            String dbName = path.substring(1).split("[/?&]")[0].trim();
+            return dbName.isEmpty() ? "admin" : dbName;
         } catch (Exception e) {
-            return "test";
+            return "admin";
         }
     }
 
